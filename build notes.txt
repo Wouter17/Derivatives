@@ -1,0 +1,9 @@
+v1.0
+You remember highschool math? Time to find out.
+
+ModuleID: derivatives
+
+Created by: Wouter17
+
+Manual available here:
+https://
