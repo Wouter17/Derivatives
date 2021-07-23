@@ -27,7 +27,7 @@ MonoBehaviour:
 
     Manual available here:
 
-    SEE MODS MANUALS FOLDER'
+    https://wouter17.github.io/Derivatives/Manual.html'
   version: 1.0
   outputFolder: build
   previewImage: {fileID: 2800000, guid: b34cde89223621244a232e0dfd864873, type: 3}
