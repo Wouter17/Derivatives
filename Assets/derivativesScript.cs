@@ -257,14 +257,15 @@ public class derivativesScript : MonoBehaviour
 		if (answerList.SequenceEqual(solutionList))
 		{
 			Debug.LogFormat("Derivatives #{0}: equation {1} solved correctly", moduleId, _currentEquation);
-			GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.CorrectChime, transform);
-			
+
 			if (_currentEquation+1 == _solvesNeeded)
 			{
+				GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.CorrectChime, transform);
 				ModuleSolve();
 			}
 			else
 			{
+				audio.PlaySoundAtTransform("success", transform);
 				nextEquation();
 			}
 		}

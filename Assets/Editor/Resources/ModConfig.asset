@@ -14,20 +14,9 @@ MonoBehaviour:
   id: derivatives
   title: Derivatives
   author: Wouter17
-  description: 'v1.0
-
-    Do you remember high school math? Time to find out.
-
-
-    ModuleID: derivatives
-
-
-    Created by: Wouter17
-
-
-    Manual available here:
-
-    https://wouter17.github.io/Derivatives/Manual.html'
+  description: "v1.0\nDo you remember high school math? Time to find out.\n\nModuleID:
+    derivatives\n\nCreated by: Wouter17\n\nGitHub:\r\nhttps://github.com/Wouter17/Derivatives\n\nManual
+    available here:\nhttps://wouter17.github.io/Derivatives/Manual.html"
   version: 1.0
   outputFolder: build
   previewImage: {fileID: 2800000, guid: b34cde89223621244a232e0dfd864873, type: 3}
