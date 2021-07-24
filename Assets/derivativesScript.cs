@@ -260,7 +260,6 @@ public class derivativesScript : MonoBehaviour
 
 			if (_currentEquation+1 == _solvesNeeded)
 			{
-				GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.CorrectChime, transform);
 				ModuleSolve();
 			}
 			else
@@ -303,6 +302,7 @@ public class derivativesScript : MonoBehaviour
 	void ModuleSolve()
 	{
 		moduleSolved = true;
+		GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.CorrectChime, transform);
 		GetComponent<KMBombModule>().HandlePass();
 	}
 }
