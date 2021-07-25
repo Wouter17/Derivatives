@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -96,7 +97,7 @@ public class derivativesScript : MonoBehaviour
 		for (var i = 0; i < amount; i++)
 		{
 			var additions = UnityEngine.Random.Range(1, 4);
-			var equation = "";
+			Calculator equation = null;
 			for (var x = 0; x < additions; x++)
 			{
 				var z = 0;
@@ -126,17 +127,65 @@ public class derivativesScript : MonoBehaviour
 					wildcard = UnityEngine.Random.Range(0, 2) == 0 ? string.Format(" + log(x^{0})", numbers[4]) : string.Format(" * x^{0}", numbers[5]);
 				}
 
-				equation += string.Format("{0}{1}*x^({2}{3}{4}{5}){6} ",
-					numbers[0] >= 0 && x!=0 ? "+ " : "",
-					numbers[0],
-					PlusMinus(true),
-					numbers[1],
-					numbers[2] == 0 ? "" : "/",
-					numbers[2] == 0 ? (object) "" : numbers[2],
-					wildcard
+				var toAdd = new Calculator(
+					mathc: "operator",
+					op: '*',
+					fn: "multiply",
+					args: new List<Calculator>()
+					{
+						new Calculator(
+							mathc: "value",
+							value: numbers[0]
+						),
+						new Calculator(
+							mathc: "operator",
+							op: '^',
+							fn: "pow",
+							args: new List<Calculator>()
+							{
+								new Calculator(
+									mathc: "symbol",
+									name: "x"
+								),
+								(numbers[2] == 0)
+									? new Calculator(
+										mathc: "value",
+										value: numbers[1]
+									)
+									: new Calculator(
+										mathc: "operator",
+										op: '/',
+										fn: "divide",
+										args: new List<Calculator>()
+										{
+											new Calculator(
+												mathc: "value",
+												value: numbers[1]
+											)
+										}
+									)
+							})
+					}
+				);
+				if (x != 0)
+				{
+					equation = new Calculator(
+						"operator",
+						'+',
+						"add",
+						args: new List<Calculator>()
+						{
+							equation,
+							toAdd
+						}
 					);
+				}
+				else
+				{
+					equation = toAdd;
+				}
 			}
-			_equations.Add(equation);
+			_equations.Add(equation.ToString());
 		}
 		Debug.LogFormat( "Derivatives #{0} the equations are:\n{1}", moduleId, _equations.Join("\n"));
 	}
@@ -306,3 +355,96 @@ public class derivativesScript : MonoBehaviour
 		GetComponent<KMBombModule>().HandlePass();
 	}
 }
+
+public class Calculator
+{
+	public string Mathc { get; set; }
+	public char Op { get; set; }
+	public string Fn { get; set; }
+	public int Value{ get; set; }
+	public string Name{ get; set; }
+	public List<Calculator> Args { get; set; }
+
+	public Calculator(string mathc, char op = '\0', string fn="", int value=0, string name="" , List<Calculator> args = null)
+	{
+		Mathc = mathc;
+		Op = op;
+		Fn = fn;
+		Value = value;
+		Name = name;
+		Args = args;
+	}
+
+	public override string ToString()
+	{
+		switch (this.Mathc)
+		{
+			case "value":
+				return this.Value.ToString();
+			case "symbol":
+				return this.Name.ToString();
+			default:
+				switch (this.Fn)
+				{
+					case "unaryMinus":
+						return "-" + this.Args[0].ToString();
+					default:
+						return this.Args[0].ToString() + this.Op + this.Args[1].ToString();
+				}
+		}
+	}
+}
+
+/*equation += string.Format("{0}{1}*x^({2}{3}{4}{5}){6} ",
+					numbers[0] >= 0 && x!=0 ? "+ " : "",
+					numbers[0],
+					PlusMinus(true),
+					numbers[1],
+					numbers[2] == 0 ? "" : "/",
+					numbers[2] == 0 ? (object) "" : numbers[2],
+					wildcard
+					);*/
+					
+/*equation = {
+	"mathc":"operator"
+	"op":'*'
+		"fn":"multiply"
+			"args":[
+			{
+				"mathc":"value"
+				"value":number[0]
+			},
+			{
+				"mathc":"operator"
+				"op":'^'
+				"fn":"pow"
+				"args":[{
+					"mathc":"symbol"
+					"value":"x"
+				},
+				{
+					if (numbers[2] == 0)
+					{
+						"mathc":"value"
+						"value":number[1]
+					}
+					else
+					{
+						{
+							"mathc":"operator"
+							"op":'/'
+							"fn":"divide"
+							"args":[
+							{
+								"mathc":"value"
+								"value":number[1]
+							},
+							{
+								"mathc":"value"
+								"value":number[2]
+							}]
+						}
+					}
+				}]
+			}]
+}*/
