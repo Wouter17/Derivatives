@@ -354,6 +354,23 @@ public class derivativesScript : MonoBehaviour
 		GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.CorrectChime, transform);
 		GetComponent<KMBombModule>().HandlePass();
 	}
+	void stringToCalculator(string toConvert)
+	{
+		var rMatchBrackets = new Regex(@"/(\([^()]*\))/m");
+		var parts = new List<string>();
+		rMatchBrackets.Replace(toConvert, match =>
+		{
+			parts.Add(match.ToString());
+			return string.Format("[{0}]", parts.Count-1);
+		});
+	}
+	/*
+	 [7(x+(7*4))-2(8x-6)]
+	 [7(x+][7*4][)-2][8x-6]
+	 [7][x+][7*4][-2][8][x][-6]
+	 [7][x][+][7*4][-][2][8][x][-6]
+	 */
+	
 }
 
 public class Calculator
