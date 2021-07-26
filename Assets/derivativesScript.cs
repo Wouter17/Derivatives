@@ -97,7 +97,7 @@ public class derivativesScript : MonoBehaviour
 		for (var i = 0; i < amount; i++)
 		{
 			var additions = UnityEngine.Random.Range(1, 4);
-			Calculator equation = null;
+			string equation = null;
 			for (var x = 0; x < additions; x++)
 			{
 				var z = 0;
@@ -126,7 +126,7 @@ public class derivativesScript : MonoBehaviour
 				{
 					wildcard = UnityEngine.Random.Range(0, 2) == 0 ? string.Format(" + log(x^{0})", numbers[4]) : string.Format(" * x^{0}", numbers[5]);
 				}
-
+				/*
 				var toAdd = new Calculator(
 					mathc: "operator",
 					op: '*',
@@ -135,7 +135,7 @@ public class derivativesScript : MonoBehaviour
 					{
 						new Calculator(
 							mathc: "value",
-							value: numbers[0]
+							value: Math.Abs(numbers[0])
 						),
 						new Calculator(
 							mathc: "operator",
@@ -150,7 +150,7 @@ public class derivativesScript : MonoBehaviour
 								(numbers[2] == 0)
 									? new Calculator(
 										mathc: "value",
-										value: numbers[1]
+										value: Math.Abs(numbers[1])
 									)
 									: new Calculator(
 										mathc: "operator",
@@ -160,7 +160,7 @@ public class derivativesScript : MonoBehaviour
 										{
 											new Calculator(
 												mathc: "value",
-												value: numbers[1]
+												value: Math.Abs(numbers[1])
 											)
 										}
 									)
@@ -183,9 +183,18 @@ public class derivativesScript : MonoBehaviour
 				else
 				{
 					equation = toAdd;
-				}
+				}*/
+				equation += string.Format("{0}{1}*x^({2}{3}{4}{5}){6} ",
+					numbers[0] >= 0 && x!=0 ? "+ " : "",
+					numbers[0],
+					PlusMinus(true),
+					numbers[1],
+					numbers[2] == 0 ? "" : "/",
+					numbers[2] == 0 ? (object) "" : numbers[2],
+					wildcard
+					);
 			}
-			_equations.Add(equation.ToString());
+			_equations.Add(equation);
 		}
 		Debug.LogFormat( "Derivatives #{0} the equations are:\n{1}", moduleId, _equations.Join("\n"));
 	}
@@ -354,15 +363,181 @@ public class derivativesScript : MonoBehaviour
 		GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.CorrectChime, transform);
 		GetComponent<KMBombModule>().HandlePass();
 	}
-	void stringToCalculator(string toConvert)
+	Calculator StringToCalculator(string toConvert)
 	{
-		var rMatchBrackets = new Regex(@"/(\([^()]*\))/m");
+		//var endTester = new Regex(@"^\[\d+\]$");
+		var rMatchBrackets = new Regex(@"\([^()]*\)");
+		var rMatchUnaryMinus = new Regex(@"(?<=(\/|\*|\^))-(\w+|\d+|\[\d+\])");
+		var rMatchPow = new Regex(@"(\w+|\d+|\[\d+\])\^(\w+|\d+|\[\d+\])");
+		var rMatchMultiplyDivide = new Regex(@"((\w+|\d+|\[\d+\])(\*|\/)(\w+|\d+|\[\d+\]))|(\[\d+\]|\d+|\w+)\[\d+\]"); //does accept 7(2*5) but doesn't (2*5)7
+		var rMatchAddMinus = new Regex(@"(\w+|\d+|\[\d+\])(\+|-)(\w+|\d+|\[\d+\])");
 		var parts = new List<string>();
-		rMatchBrackets.Replace(toConvert, match =>
+
+		while (true)
 		{
-			parts.Add(match.ToString());
-			return string.Format("[{0}]", parts.Count-1);
-		});
+			if (rMatchBrackets.IsMatch(toConvert))
+			{
+				toConvert = rMatchBrackets.Replace(toConvert, match =>
+				{
+					parts.Add(match.ToString());
+					return string.Format("[{0}]", parts.Count - 1);
+				},1);
+				continue;
+			}
+			if (rMatchUnaryMinus.IsMatch(toConvert))
+			{
+				toConvert = rMatchUnaryMinus.Replace(toConvert, match =>
+				{
+					parts.Add(match.ToString());
+					return string.Format("[{0}]", parts.Count - 1);
+				},1);
+				continue;
+			}
+			if (rMatchPow.IsMatch(toConvert))
+			{
+				toConvert = rMatchPow.Replace(toConvert, match =>
+				{
+					parts.Add(match.ToString());
+					return string.Format("[{0}]", parts.Count - 1);
+				},1);
+				continue;
+			}
+			if (rMatchMultiplyDivide.IsMatch(toConvert))
+			{
+				toConvert = rMatchMultiplyDivide.Replace(toConvert, match =>
+				{
+					parts.Add(match.ToString());
+					return string.Format("[{0}]", parts.Count - 1);
+				},1);
+				continue;
+			}
+			if (rMatchAddMinus.IsMatch(toConvert))
+			{
+				toConvert = rMatchAddMinus.Replace(toConvert, match =>
+				{
+					parts.Add(match.ToString());
+					return string.Format("[{0}]", parts.Count - 1);
+				},1);
+				continue;
+			}
+			break;
+		}
+		return PartialStringToCalculator(parts, parts[parts.Count-1]);
+	}
+	Calculator PartialStringToCalculator(List<string> parts, string part)
+	{
+		var rValue = new Regex(@"^\d+$");
+		var rSymbol = new Regex(@"^\w+$");
+		var rVariable = new Regex(@"^\[\d+\]$");
+		var rMatchBrackets = new Regex(@"^\(.*\)$");
+		var rMatchUnaryMinus = new Regex(@"^-(\w+|\d+|\[\d+\])$");
+		var rMatchAdd = new Regex(@"^(\w+|\d+|\[\d+\])\+(\w+|\d+|\[\d+\])$");
+		var rMatchMinus = new Regex(@"^(\w+|\d+|\[\d+\])-(\w+|\d+|\[\d+\])$");
+		var rMatchMultiply = new Regex(@"^(\w+|\d+|\[\d+\])\*(\w+|\d+|\[\d+\])$");
+		var rMatchDivide = new Regex(@"^(\w+|\d+|\[\d+\])\/(\w+|\d+|\[\d+\])$");
+		var rMatchPow = new Regex(@"^(\w+|\d+|\[\d+\])\^(\w+|\d+|\[\d+\])$");
+
+		if (rValue.IsMatch(part))
+		{
+			return new Calculator(
+				"value",
+				value: int.Parse(part)
+			);
+		}
+		if (rSymbol.IsMatch(part))
+		{
+			return new Calculator(
+				mathc: "symbol",
+				name: part
+			);
+		}
+		if (rVariable.IsMatch(part))
+		{
+			var parameters = Regex.Matches(part, @"\[\d+\]").Cast<Match>().Select(match => match.Value.Substring(1, match.Value.Length - 2)).ToList();
+			return PartialStringToCalculator(parts, parts[int.Parse(parameters[0])]);
+		}
+		if (rMatchBrackets.IsMatch(part))
+		{
+			return PartialStringToCalculator(parts, part.Substring(1, part.Length - 2));
+		}
+		if (rMatchUnaryMinus.IsMatch(part))
+		{
+			return new Calculator(
+				"operator",
+				'-',
+				"unaryMinus",
+				args: new List<Calculator>()
+				{
+					PartialStringToCalculator(parts,part.Substring(1))
+				}
+			);
+		}
+		if (rMatchAdd.IsMatch(part))
+		{
+			return new Calculator(
+				"operator",
+				'+',
+				"add",
+				args: new List<Calculator>()
+				{
+					PartialStringToCalculator(parts,part.Substring(0,part.IndexOf('+'))),
+					PartialStringToCalculator(parts,part.Substring(part.IndexOf('+')+1))
+				}
+			);
+		}
+		if (rMatchMinus.IsMatch(part))
+		{
+			return new Calculator(
+				"operator",
+				'-',
+				"minus",
+				args: new List<Calculator>()
+				{
+					PartialStringToCalculator(parts,part.Substring(0,part.IndexOf('-'))),
+					PartialStringToCalculator(parts,part.Substring(part.IndexOf('-')+1))
+				}
+			);
+		}
+		if (rMatchMultiply.IsMatch(part))
+		{
+			return new Calculator(
+				"operator",
+				'*',
+				"multiply",
+				args: new List<Calculator>()
+				{
+					PartialStringToCalculator(parts,part.Substring(0,part.IndexOf('*'))),
+					PartialStringToCalculator(parts,part.Substring(part.IndexOf('*')+1))
+				}
+			);
+		}
+		if (rMatchDivide.IsMatch(part))
+		{
+			return new Calculator(
+				"operator",
+				'/',
+				"divide",
+				args: new List<Calculator>()
+				{
+					PartialStringToCalculator(parts,part.Substring(0,part.IndexOf('/'))),
+					PartialStringToCalculator(parts,part.Substring(part.IndexOf('/')+1))
+				}
+			);
+		}
+		if (rMatchPow.IsMatch(part))
+		{
+			return new Calculator(
+				"operator",
+				'^',
+				"pow",
+				args: new List<Calculator>()
+				{
+					PartialStringToCalculator(parts,part.Substring(0,part.IndexOf('^'))),
+					PartialStringToCalculator(parts,part.Substring(part.IndexOf('^')+1))
+				}
+			);
+		}
+		throw new ArgumentException("Invalid Calculator string supplied", part);
 	}
 	/*
 	 [7(x+(7*4))-2(8x-6)]
