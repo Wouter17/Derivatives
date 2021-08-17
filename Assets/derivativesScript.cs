@@ -67,7 +67,7 @@ public class derivativesScript : MonoBehaviour
 		if(moduleSolved){ return; }
 		
 		key.AddInteractionPunch();
-		GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform);
+		audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform);
 		
 		if (key.name.EndsWith("solve"))
 		{
@@ -126,64 +126,6 @@ public class derivativesScript : MonoBehaviour
 				{
 					wildcard = UnityEngine.Random.Range(0, 2) == 0 ? string.Format(" + log(x^{0})", numbers[4]) : string.Format(" * x^{0}", numbers[5]);
 				}
-				/*
-				var toAdd = new Calculator(
-					mathc: "operator",
-					op: '*',
-					fn: "multiply",
-					args: new List<Calculator>()
-					{
-						new Calculator(
-							mathc: "value",
-							value: Math.Abs(numbers[0])
-						),
-						new Calculator(
-							mathc: "operator",
-							op: '^',
-							fn: "pow",
-							args: new List<Calculator>()
-							{
-								new Calculator(
-									mathc: "symbol",
-									name: "x"
-								),
-								(numbers[2] == 0)
-									? new Calculator(
-										mathc: "value",
-										value: Math.Abs(numbers[1])
-									)
-									: new Calculator(
-										mathc: "operator",
-										op: '/',
-										fn: "divide",
-										args: new List<Calculator>()
-										{
-											new Calculator(
-												mathc: "value",
-												value: Math.Abs(numbers[1])
-											)
-										}
-									)
-							})
-					}
-				);
-				if (x != 0)
-				{
-					equation = new Calculator(
-						"operator",
-						'+',
-						"add",
-						args: new List<Calculator>()
-						{
-							equation,
-							toAdd
-						}
-					);
-				}
-				else
-				{
-					equation = toAdd;
-				}*/
 				equation += string.Format("{0}{1}*x^({2}{3}{4}{5}){6} ",
 					numbers[0] >= 0 && x!=0 ? "+ " : "",
 					numbers[0],
@@ -350,7 +292,7 @@ public class derivativesScript : MonoBehaviour
 	
 	void handleStrike()
 	{
-		GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.Strike, transform);
+		audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.Strike, transform);
 		GetComponent<KMBombModule>().HandleStrike();
 		if (_currentEquation + 1 == _solvesNeeded)
 		{
@@ -360,7 +302,7 @@ public class derivativesScript : MonoBehaviour
 	void ModuleSolve()
 	{
 		moduleSolved = true;
-		GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.CorrectChime, transform);
+		audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.CorrectChime, transform);
 		GetComponent<KMBombModule>().HandlePass();
 	}
 	Calculator StringToCalculator(string toConvert)
