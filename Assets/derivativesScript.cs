@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -336,7 +335,7 @@ public class DerivativesScript : MonoBehaviour
 
 	#region String to Calculator
 
-	private MathNode StringToCalculator(string toConvert)
+	private MathNode StringToCalculator(string toConvert, List<string> inputParts = null)
 	{
 		if (string.IsNullOrEmpty(toConvert)) return new MathNode(NodeType.Value, 0);
 
@@ -351,6 +350,7 @@ public class DerivativesScript : MonoBehaviour
 		var rMatchAddMinus = new Regex(@"([a-zA-Z]+|\d+|\[\d+\])(\+|-)([a-zA-Z]+|\d+|\[\d+\])");
 		var rMatchImplicitMultiply = new Regex(@"^-?([a-zA-Z]|\d+)\*?\[\d+\]$");
 		var parts = new List<string> { toConvert };
+		if (inputParts != null) parts = inputParts;
 
 		while (true)
 		{
@@ -427,7 +427,7 @@ public class DerivativesScript : MonoBehaviour
 			break;
 		}
 
-		return PartialStringToCalculator(parts, parts[parts.Count - 1]);
+		return PartialStringToCalculator(parts, toConvert);
 	}
 
 	private MathNode PartialStringToCalculator(List<string> parts, string part)
@@ -452,13 +452,13 @@ public class DerivativesScript : MonoBehaviour
 		{
 			return new MathNode(
 				NodeType.Ln,
-				StringToCalculator(part.Substring(3, part.Length - 4))
+				StringToCalculator(part.Substring(3, part.Length - 4), parts.Take(parts.Count - 1).ToList())
 			);
 		}
 
 		if (rMatchBrackets.IsMatch(part))
 		{
-			return StringToCalculator(part.Substring(1, part.Length - 2));
+			return StringToCalculator(part.Substring(1, part.Length - 2), parts.Take(parts.Count - 1).ToList());
 		}
 
 		if (rValue.IsMatch(part))
