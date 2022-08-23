@@ -19,6 +19,9 @@ ExportedObj/
 *.svd
 *.mdb
 
+# IDEA settings
+**/.idea
+**/JetBrains
 
 # Unity3D generated meta files
 *.pidb.meta

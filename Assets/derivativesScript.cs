@@ -1,98 +1,109 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-public class derivativesScript : MonoBehaviour 
+public class DerivativesScript : MonoBehaviour
 {
+	//Bomb components
+	public new KMAudio audio;
+	public KMBombInfo bomb;
+	public KMSelectable[] keypad;
+	public TextMesh equationText;
+	public TextMesh screen;
 
-    public KMAudio audio;
-    public KMBombInfo bomb;
-    public KMSelectable[] keypad;
-    public TextMesh equationText;
-    public TextMesh screen;
-    
-    private List<string> _equations = new List<string>();
-    private List<string> _solutions = new List<string>();
-    private int _solvesNeeded = 1;
-    private int _currentEquation;
-    private bool _error;
-    
-    //settings 
-    public int maxEquations = 10;
-    public int wildcardChance = 10;
-    public readonly int[][] ranges =
-    {
-	    new []{-19,20},
-	    new []{1,2,4,8,16,32},
-	    new []{1,2,4},
-	    new []{-99,100}, //was used for z in log(z*x^y)
-	    new []{0,10},	
-	    new []{-10,10}
-    };
+	//state
+	private readonly List<string> _equations = new List<string>();
+	private List<MathNode> _solutions = new List<MathNode>();
+	private int _solvesNeeded = 1;
+	private int _currentEquation;
+		
+	//settings 
+	public Color defaultColor = new Color(99, 99, 99, 255); 
+	public int maxEquations = 10;
+	public int wildcardChance = 10;
+	public int checkingLimit = 1000;
+	public double precision = 1E-4;
 
-    //logging
-    static int moduleIdCounter = 1;
-    int moduleId;
-    private bool moduleSolved;
+	private readonly int[][] _ranges =
+	{
+		new[] { -19, 20 },
+		new[] { 1, 2, 4, 8, 16, 32 },
+		new[] { 1, 2, 4 },
+		new[] { -99, 100 }, //was used for z in log(z*x^y)
+		new[] { 0, 10 },
+		new[] { -10, 10 }
+	};
 
-    void Awake () 
-    {
-        moduleId = moduleIdCounter++;
-        foreach (var key in keypad){
-            var pressedKey = key;
-            key.OnInteract += delegate () { KeypadPress(pressedKey); return false; };
-        }
+	//logging
+	private static int _moduleIdCounter = 1;
+	private int _moduleId;
+	private bool _moduleSolved;
+	
+	//properties
+	private static readonly int Color1 = Shader.PropertyToID("_Color");
 
-    }
+	private void Awake()
+	{
+		_moduleId = _moduleIdCounter++;
+			
+		foreach (var key in keypad)
+		{
+			var pressedKey = key;
+			key.OnInteract += () =>
+			{
+				KeypadPress(pressedKey);
+				return false;
+			};
+		}
+	}
 
-	void Start ()
+	private void Start()
 	{
 		var time = bomb.GetTime();
-		_solvesNeeded = Math.Min( (int)Math.Ceiling(time/180) , maxEquations );
-		Debug.LogFormat("Derivatives #{0} generating {1} equations", moduleId, _solvesNeeded);
+		_solvesNeeded = Math.Min((int)Math.Ceiling(time / 180), maxEquations);
+		
+		LOG(string.Format("generating {0} equations", _solvesNeeded));
 		GenerateEquations(_solvesNeeded);
 		GenerateSolutions();
 		SetEquationText("y = " + _equations[_currentEquation]);
 	}
-	
-	void KeypadPress(KMSelectable key)
+
+	private void KeypadPress(KMSelectable key)
 	{
-		if (_error) ModuleSolve();
-		if(moduleSolved){ return; }
-		
+		if (_moduleSolved) return;
+
 		key.AddInteractionPunch();
 		audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform);
-		
+
 		if (key.name.EndsWith("solve"))
 		{
-			checkSolve();
-		}else if (key.name.EndsWith("del"))
+			CheckSolve();
+		}
+		else if (key.name.EndsWith("del"))
 		{
-			deleteCharacter();
+			DeleteCharacter();
 		}
 		else
 		{
-			addCharacter(key);
+			AddCharacter(key);
 		}
 	}
 
-	void deleteCharacter()
+	private void DeleteCharacter()
 	{
 		if (screen.text.Length > 8) SetScreenText(screen.text.Remove(screen.text.Length - 1));
 	}
 
-	void addCharacter(Object key)
+	private void AddCharacter(Object key)
 	{
 		SetScreenText(screen.text + key.name.Last());
 	}
 
-	void GenerateEquations(int amount)
+	private void GenerateEquations(int amount)
 	{
 		for (var i = 0; i < amount; i++)
 		{
@@ -102,8 +113,8 @@ public class derivativesScript : MonoBehaviour
 			{
 				var z = 0;
 				var wildcard = "";
-				var numbers = new int[ranges.Length];
-				foreach (var range in ranges)
+				var numbers = new int[_ranges.Length];
+				foreach (var range in _ranges)
 				{
 					if (range.Length > 2)
 					{
@@ -113,6 +124,7 @@ public class derivativesScript : MonoBehaviour
 					{
 						numbers[z] = UnityEngine.Random.Range(range[0], range[1]);
 					}
+
 					z++;
 				}
 
@@ -124,461 +136,435 @@ public class derivativesScript : MonoBehaviour
 
 				if (UnityEngine.Random.Range(0, 100) < wildcardChance)
 				{
-					wildcard = UnityEngine.Random.Range(0, 2) == 0 ? string.Format(" + log(x^{0})", numbers[4]) : string.Format(" * x^{0}", numbers[5]);
+					wildcard = UnityEngine.Random.Range(0, 2) == 0
+						? string.Format(" + ln(x^{0})", numbers[4])
+						: string.Format(" * x^{0}", numbers[5]); //TODO: implement wildcards
 				}
+
 				equation += string.Format("{0}{1}*x^({2}{3}{4}{5}){6} ",
-					numbers[0] >= 0 && x!=0 ? "+ " : "",
+					numbers[0] >= 0 && x != 0 ? "+ " : "",
 					numbers[0],
 					PlusMinus(true),
 					numbers[1],
 					numbers[2] == 0 ? "" : "/",
-					numbers[2] == 0 ? (object) "" : numbers[2],
+					numbers[2] == 0 ? (object)"" : numbers[2],
 					wildcard
-					);
+				);
 			}
+
 			_equations.Add(equation);
 		}
-		Debug.LogFormat( "Derivatives #{0} the equations are:\n{1}", moduleId, _equations.Join("\n"));
+
+		LOG(string.Format("the equations are:\n{0}", _equations.Join("\n")));
 	}
 
-	static string PlusMinus(bool emptyOnTrue = false)
+	private static string PlusMinus(bool emptyOnTrue = false)
 	{
 		if (emptyOnTrue)
 		{
 			return UnityEngine.Random.Range(0, 2) == 0 ? "" : "-";
 		}
+
 		return UnityEngine.Random.Range(0, 2) == 0 ? "+" : "-";
 	}
 
-	void nextEquation()
+	private void NextEquation()
 	{
 		_currentEquation++;
 		SetEquationText("y = " + _equations[_currentEquation]);
 		SetScreenText("dy/dx = ");
 	}
 
-	void SetEquationText(string text)
+	private void SetEquationText(string text)
 	{
 		equationText.text = text;
 		equationText.characterSize = (0.17f - equationText.text.Length * 0.00186f) * 0.25f;
 	}
 
-	void SetScreenText(string text)
+	private void SetScreenText(string text)
 	{
 		screen.text = text;
 		screen.characterSize = 0.0575f * (float)Math.Pow(0.98, screen.text.Length);
 	}
 
-	void GenerateSolutions()
+	private void GenerateSolutions()
 	{
-		var httpWebRequest = (HttpWebRequest) WebRequest.Create("http://api.mathjs.org/v4/");
-		httpWebRequest.ContentType = "application/json";
-		httpWebRequest.Method = "POST";
+		_solutions = _equations.Select(equation => MathNode.Derivative(StringToCalculator(
+			equation.Replace(" ", "")
+		))).ToList();
+		LOG("the solutions are:\n" + _solutions.Join("\n"));
+	}
 
-		using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+	private void CheckSolve()
+	{
+		var correct = true;
+
+		var textOnsScreen = screen.text.Substring(8);
+		
+		if (textOnsScreen.Split('(').Length != textOnsScreen.Split(')').Length)
 		{
-			var equations = _equations.Select(x => string.Format("derivative('{0}', 'x')", x));
-			var json = "{\"expr\": [\"" + equations.Join("\",\"") + "\"]}";
-			//var json = "{\"expr\": [\"derivative('2x^3', 'x')\", \"derivative('7x^2', 'x')\", \"derivative('9x^8', 'x')\"]}";
-			streamWriter.Write(json);
+			InvalidInput();
+			return;
 		}
+		
+		MathNode answerGiven;
 		try
 		{
-			var httpResponse = (HttpWebResponse) httpWebRequest.GetResponse();
-		
-			using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
-			{
-				var result = streamReader.ReadToEnd();
-				var answersList = Regex.Matches(result, @"\[(.*?)\]")[0].ToString();
-				_solutions = answersList
-					.Substring(1, answersList.Length - 2)
-					.Split(',')
-					.Select(x => x.Substring(1, x.Length - 2))
-					.ToList();
-			}
+			answerGiven = StringToCalculator(textOnsScreen);
 		}
 		catch (Exception e)
 		{
+			InvalidInput();
 			Console.WriteLine(e);
-			handleConnectionError(e);
-			throw;
+			return;
 		}
-		Debug.LogFormat( "Derivatives #{0} the solutions are:\n{1}", moduleId, _solutions.Join("\n"));
-	}
-
-	void handleConnectionError(Exception error)
-	{
-		_error = true;
-		SetEquationText(error.Message);
-		SetScreenText("Press a button to solve module");
-	}
-
-	void checkSolve()
-	{
-		if (_error){ moduleSolved = true; return; }
-		var r = new Regex(@"(?<=-)\(\d*((x|\/x)\^(\d*|\((|-)\d*\/\d*)|x)\)"); //remove extra brackets in -(y/x) or -(yx)
-		var r2 = new Regex(@"\(1\/x\)"); //remove brackets in 1/x
-		var r3 = new Regex(@"x\^\((-| )\d*\/\d*\)-\d*\/\d*"); //replace - location in multiplication x^(-1/2)-11/2 -> -x^(-1/2)11/2
 		
-		//var answerList = Regex.Split(screen.text, @" (\+|-) /gm").ToList();
-		//var solveList = Regex.Split(_solutions[_currentEquation], @" (\+|-) /gm").ToList();
-		//var answerList = Regex.Replace(screen.text.Substring(8),@"(\\*|\\(|\\)| )","");
-		//var solveList = Regex.Replace(_solutions[_currentEquation], @"(\*|\(|\)| )","");
-		var answerList = Regex.Split(r.Replace(screen.text.Substring(8)
-						.Replace("+-", "-")
-					, ReplaceEquationBrackets)
-				, @"(?<!(\(|\/|\*))(?=-)(?!.\()|\+")
-			.Where(x => x != string.Empty)
-			.ToList()
-			.Select(x => r3.Replace(r2.Replace(
-					x.Replace("*", "")
-					,ReplaceOneDividedByX)
-					,ReplaceMoveMinus)
-			)
-			.ToList();
-			
-		
-		//answerList = Regex.Split(answerList, @"(?<!(\(|\/|\*))(-|\+)(?!\()")
-		var solutionList = Regex.Split(_solutions[_currentEquation].Replace("+ -", "- ")
-				, @"(?<= )(?=-)(?=. )|\+")
-			.Where(x => x != string.Empty)
-			.ToList()
-			.Select(x => r3.Replace(r2.Replace(r.Replace(
-					x.Replace(" ", "").Replace("*", "")
-					,ReplaceEquationBrackets)
-					,ReplaceOneDividedByX)
-					,ReplaceMoveMinus)
-			)
-			.ToList();
-		
-		answerList.Sort();
-		solutionList.Sort();
+		var correctDerivative = _solutions[_currentEquation];
 
-		if (answerList.SequenceEqual(solutionList))
+		for (int i = 1; i < checkingLimit; i++)
 		{
-			Debug.LogFormat("Derivatives #{0}: equation {1} solved correctly", moduleId, _currentEquation);
+			if (double.IsNaN(MathNode.SolveForValue(answerGiven, i)) || !NearlyEqual(
+				    MathNode.SolveForValue(answerGiven, i), MathNode.SolveForValue(correctDerivative, i), precision))
+			{
+				correct = false;
+				LOG(string.Format("equation {0} answer incorrect \nexpected: {1}\nbut got: {2}\nfor x = {3}\nfrom input: {4}\nfor equation: {5}",
+						_currentEquation,
+						MathNode.SolveForValue(correctDerivative, i),
+						MathNode.SolveForValue(answerGiven, i),
+						i,
+						textOnsScreen,
+						_equations[_currentEquation])
+					);
+				HandleStrike();
+				break;
+			}
+		}
 
-			if (_currentEquation+1 == _solvesNeeded)
+
+		if (correct)
+		{
+			LOG(string.Format("equation {0} solved correctly", _currentEquation));
+
+			if (_currentEquation + 1 == _solvesNeeded)
 			{
 				ModuleSolve();
 			}
 			else
 			{
 				audio.PlaySoundAtTransform("success", transform);
-				nextEquation();
+				NextEquation();
 			}
+		}
+	}
+
+	private void InvalidInput()
+	{
+		StartCoroutine(FlashButtonColor(Color.red));
+	}
+
+	#region Button colors
+
+	private void SetButtonColor(Color color)
+	{
+		foreach (var key in keypad)
+		{
+			key.GetComponent<Renderer>().material.SetColor(Color1, color);
+		}
+	}
+
+	private IEnumerator FlashButtonColor(Color color, float time = 0.5f)
+	{
+		for (int i = 0; i < 3; i++)
+		{
+			SetButtonColor(color);
+			yield return new WaitForSeconds(time);
+			SetButtonColor(defaultColor);
+			yield return new WaitForSeconds(time);
+		}
+	}
+	
+	#endregion
+
+	private static bool NearlyEqual(double a, double b, double epsilon)
+	{
+		const double minNormal = 2.2250738585072014E-308d;
+		double absA = Math.Abs(a);
+		double absB = Math.Abs(b);
+		double diff = Math.Abs(a - b);
+
+		if (a.Equals(b))
+		{
+			// shortcut, handles infinities
+			return true;
+		}
+		else if (a == 0 || b == 0 || absA + absB < minNormal)
+		{
+			// a or b is zero or both are extremely close to it
+			// relative error is less meaningful here
+			return diff < (epsilon * minNormal);
 		}
 		else
 		{
-			Debug.LogFormat("Derivatives #{0}: equation {1} answer incorrect \n expected: {2}\n(raw): {3}\n but got: {4} \n(raw): {5}", moduleId, _currentEquation, solutionList.Join(),_solutions[_currentEquation],answerList.Join(), screen.text);
-			handleStrike();
+			// use relative error
+			return diff / (absA + absB) < epsilon;
 		}
 	}
-	
-	static string ReplaceEquationBrackets(Match match)
-	{
-		return match.ToString().Substring(1, match.Length - 2);
-	}
 
-	static string ReplaceOneDividedByX(Match match)
-	{
-		return match.ToString().Substring(2, match.Length - 3);
-	}
-
-	static string ReplaceMoveMinus(Match match)
-	{
-		return '-' + match.ToString().TrimEnd('-');
-	}
-	
-	void handleStrike()
+	private void HandleStrike()
 	{
 		audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.Strike, transform);
 		GetComponent<KMBombModule>().HandleStrike();
 		if (_currentEquation + 1 == _solvesNeeded)
 		{
 			ModuleSolve();
-		}else nextEquation();
+		}
+		else NextEquation();
 	}
-	void ModuleSolve()
+
+	private void ModuleSolve()
 	{
-		moduleSolved = true;
+		_moduleSolved = true;
 		audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.CorrectChime, transform);
 		GetComponent<KMBombModule>().HandlePass();
 	}
-	Calculator StringToCalculator(string toConvert)
+
+	private void LOG(string message)
 	{
+		Debug.Log(string.Format("[Derivatives #{0}] " + message, _moduleId));
+	}
+
+	#region String to Calculator
+
+	private MathNode StringToCalculator(string toConvert)
+	{
+		if (string.IsNullOrEmpty(toConvert)) return new MathNode(NodeType.Value, 0);
+
 		//var endTester = new Regex(@"^\[\d+\]$");
+		var rMatchLn = new Regex(@"ln\([^()]*\)");
 		var rMatchBrackets = new Regex(@"\([^()]*\)");
-		var rMatchUnaryMinus = new Regex(@"(?<=(\/|\*|\^))-(\w+|\d+|\[\d+\])");
-		var rMatchPow = new Regex(@"(\w+|\d+|\[\d+\])\^(\w+|\d+|\[\d+\])");
-		var rMatchMultiplyDivide = new Regex(@"((\w+|\d+|\[\d+\])(\*|\/)(\w+|\d+|\[\d+\]))|(\[\d+\]|\d+|\w+)\[\d+\]"); //does accept 7(2*5) but doesn't (2*5)7
-		var rMatchAddMinus = new Regex(@"(\w+|\d+|\[\d+\])(\+|-)(\w+|\d+|\[\d+\])");
-		var parts = new List<string>();
+		var rMatchUnaryMinus = new Regex(@"(?<=(\/|\*|\^|^))-([a-zA-Z]+|\d+|\[\d+\])(?!\^)");
+		var rMatchPow = new Regex(@"([a-zA-Z]+|\d+|\[\d+\])\^([a-zA-Z]+|\d+|\[\d+\])");
+		var rMatchMultiplyDivide =
+			new Regex(
+				@"(([a-zA-Z]+|\d+|\[\d+\])(\*|\/)([a-zA-Z]+|\d+|\[\d+\]))|(\[\d+\]|\d+|[a-zA-Z]+)\[\d+\]"); //does accept 7(2*5) but doesn't (2*5)7
+		var rMatchAddMinus = new Regex(@"([a-zA-Z]+|\d+|\[\d+\])(\+|-)([a-zA-Z]+|\d+|\[\d+\])");
+		var rMatchImplicitMultiply = new Regex(@"^-?([a-zA-Z]|\d+)\*?\[\d+\]$");
+		var parts = new List<string> { toConvert };
 
 		while (true)
 		{
+			if (rMatchLn.IsMatch(toConvert))
+			{
+				toConvert = rMatchLn.Replace(toConvert, match =>
+				{
+					parts.Add(match.ToString());
+					return string.Format("[{0}]", parts.Count - 1);
+				}, 1);
+				continue;
+			}
+
 			if (rMatchBrackets.IsMatch(toConvert))
 			{
 				toConvert = rMatchBrackets.Replace(toConvert, match =>
 				{
 					parts.Add(match.ToString());
 					return string.Format("[{0}]", parts.Count - 1);
-				},1);
+				}, 1);
 				continue;
 			}
+
 			if (rMatchUnaryMinus.IsMatch(toConvert))
 			{
 				toConvert = rMatchUnaryMinus.Replace(toConvert, match =>
 				{
 					parts.Add(match.ToString());
 					return string.Format("[{0}]", parts.Count - 1);
-				},1);
+				}, 1);
 				continue;
 			}
+
 			if (rMatchPow.IsMatch(toConvert))
 			{
 				toConvert = rMatchPow.Replace(toConvert, match =>
 				{
 					parts.Add(match.ToString());
 					return string.Format("[{0}]", parts.Count - 1);
-				},1);
+				}, 1);
 				continue;
 			}
+
 			if (rMatchMultiplyDivide.IsMatch(toConvert))
 			{
 				toConvert = rMatchMultiplyDivide.Replace(toConvert, match =>
 				{
 					parts.Add(match.ToString());
 					return string.Format("[{0}]", parts.Count - 1);
-				},1);
+				}, 1);
 				continue;
 			}
+
 			if (rMatchAddMinus.IsMatch(toConvert))
 			{
 				toConvert = rMatchAddMinus.Replace(toConvert, match =>
 				{
 					parts.Add(match.ToString());
 					return string.Format("[{0}]", parts.Count - 1);
-				},1);
+				}, 1);
 				continue;
 			}
+
+			if (rMatchImplicitMultiply.IsMatch(toConvert))
+			{
+				toConvert = rMatchImplicitMultiply.Replace(toConvert, match =>
+				{
+					parts.Add(match.ToString());
+					return string.Format("[{0}]", parts.Count - 1);
+				}, 1);
+				continue;
+			}
+
 			break;
 		}
-		return PartialStringToCalculator(parts, parts[parts.Count-1]);
+
+		return PartialStringToCalculator(parts, parts[parts.Count - 1]);
 	}
-	Calculator PartialStringToCalculator(List<string> parts, string part)
+
+	private MathNode PartialStringToCalculator(List<string> parts, string part)
 	{
-		var rValue = new Regex(@"^\d+$");
-		var rSymbol = new Regex(@"^\w+$");
+		var rValue =
+			new Regex(@"^-?\d+$"); //TODO: needs to be replaced with one that also support more than 2 characters
+		var rSymbol = new Regex(@"^[a-zA-Z]+$");
 		var rVariable = new Regex(@"^\[\d+\]$");
 		var rMatchBrackets = new Regex(@"^\(.*\)$");
-		var rMatchUnaryMinus = new Regex(@"^-(\w+|\d+|\[\d+\])$");
-		var rMatchAdd = new Regex(@"^(\w+|\d+|\[\d+\])\+(\w+|\d+|\[\d+\])$");
-		var rMatchMinus = new Regex(@"^(\w+|\d+|\[\d+\])-(\w+|\d+|\[\d+\])$");
-		var rMatchMultiply = new Regex(@"^(\w+|\d+|\[\d+\])\*(\w+|\d+|\[\d+\])$");
-		var rMatchDivide = new Regex(@"^(\w+|\d+|\[\d+\])\/(\w+|\d+|\[\d+\])$");
-		var rMatchPow = new Regex(@"^(\w+|\d+|\[\d+\])\^(\w+|\d+|\[\d+\])$");
+		var rMatchLn = new Regex(@"ln\([^()]*\)");
+		var rMatchUnaryMinus = new Regex(@"^-([a-zA-Z]+|\d+|\[\d+\])$");
+		var rMatchAdd = new Regex(@"^([a-zA-Z]+|\d+|\[\d+\])\+([a-zA-Z]+|\d+|\[\d+\])$");
+		var rMatchMinus = new Regex(@"^([a-zA-Z]+|\d+|\[\d+\])-([a-zA-Z]+|\d+|\[\d+\])$");
+		var rMatchMultiply = new Regex(@"^-?([a-zA-Z]+|\d+|\[\d+\])\*-?([a-zA-Z]+|\d+|\[\d+\])$");
+		var rMatchImplicitMultiplyWithMultipleVariable = new Regex(@"^\[\d+\]\[\d+\]$");
+		var rMatchImplicitMultiplyWithVariable = new Regex(@"^-?([a-zA-Z]|\d+)\*?\[\d+\]$");
+		var rMatchImplicitMultiplyWithSymbol = new Regex(@"^-?(\d+)\*?[a-zA-Z]+$");
+		var rMatchDivide = new Regex(@"^-?([a-zA-Z]+|\d+|\[\d+\])\/-?([a-zA-Z]+|\d+|\[\d+\])$");
+		var rMatchPow = new Regex(@"^([a-zA-Z]+|\d+|\[\d+\])\^([a-zA-Z]+|\d+|\[\d+\])$");
+
+
+		if (rMatchLn.IsMatch(part))
+		{
+			return new MathNode(
+				NodeType.Ln,
+				StringToCalculator(part.Substring(3, part.Length - 4))
+			);
+		}
+
+		if (rMatchBrackets.IsMatch(part))
+		{
+			return StringToCalculator(part.Substring(1, part.Length - 2));
+		}
 
 		if (rValue.IsMatch(part))
 		{
-			return new Calculator(
-				"value",
-				value: int.Parse(part)
+			return new MathNode(
+				NodeType.Value,
+				int.Parse(part)
 			);
 		}
+
 		if (rSymbol.IsMatch(part))
 		{
-			return new Calculator(
-				mathc: "symbol",
-				name: part
+			return new MathNode(
+				NodeType.Variable,
+				part
 			);
 		}
+
 		if (rVariable.IsMatch(part))
 		{
-			var parameters = Regex.Matches(part, @"\[\d+\]").Cast<Match>().Select(match => match.Value.Substring(1, match.Value.Length - 2)).ToList();
+			var parameters = Regex.Matches(part, @"\[\d+\]").Cast<Match>()
+				.Select(match => match.Value.Substring(1, match.Value.Length - 2)).ToList();
 			return PartialStringToCalculator(parts, parts[int.Parse(parameters[0])]);
 		}
-		if (rMatchBrackets.IsMatch(part))
-		{
-			return PartialStringToCalculator(parts, part.Substring(1, part.Length - 2));
-		}
+
 		if (rMatchUnaryMinus.IsMatch(part))
 		{
-			return new Calculator(
-				"operator",
-				'-',
-				"unaryMinus",
-				args: new List<Calculator>()
-				{
-					PartialStringToCalculator(parts,part.Substring(1))
-				}
+			return new MathNode(
+				NodeType.UnaryMinus,
+				PartialStringToCalculator(parts, part.Substring(1))
 			);
 		}
+
 		if (rMatchAdd.IsMatch(part))
 		{
-			return new Calculator(
-				"operator",
-				'+',
-				"add",
-				args: new List<Calculator>()
-				{
-					PartialStringToCalculator(parts,part.Substring(0,part.IndexOf('+'))),
-					PartialStringToCalculator(parts,part.Substring(part.IndexOf('+')+1))
-				}
+			return new MathNode(
+				NodeType.Add,
+				PartialStringToCalculator(parts, part.Substring(0, part.IndexOf('+'))),
+				PartialStringToCalculator(parts, part.Substring(part.IndexOf('+') + 1))
 			);
 		}
+
 		if (rMatchMinus.IsMatch(part))
 		{
-			return new Calculator(
-				"operator",
-				'-',
-				"minus",
-				args: new List<Calculator>()
-				{
-					PartialStringToCalculator(parts,part.Substring(0,part.IndexOf('-'))),
-					PartialStringToCalculator(parts,part.Substring(part.IndexOf('-')+1))
-				}
+			return new MathNode(
+				NodeType.Subtract,
+				PartialStringToCalculator(parts, part.Substring(0, part.IndexOf('-'))),
+				PartialStringToCalculator(parts, part.Substring(part.IndexOf('-') + 1))
 			);
 		}
+
 		if (rMatchMultiply.IsMatch(part))
 		{
-			return new Calculator(
-				"operator",
-				'*',
-				"multiply",
-				args: new List<Calculator>()
-				{
-					PartialStringToCalculator(parts,part.Substring(0,part.IndexOf('*'))),
-					PartialStringToCalculator(parts,part.Substring(part.IndexOf('*')+1))
-				}
+			return new MathNode(
+				NodeType.Multiply,
+				PartialStringToCalculator(parts, part.Substring(0, part.IndexOf('*'))),
+				PartialStringToCalculator(parts, part.Substring(part.IndexOf('*') + 1))
 			);
 		}
+
+		if (rMatchImplicitMultiplyWithMultipleVariable.IsMatch(part))
+		{
+			return new MathNode(
+				NodeType.Multiply,
+				PartialStringToCalculator(parts, part.Substring(0, part.IndexOf("]", StringComparison.Ordinal) + 1)),
+				PartialStringToCalculator(parts, part.Substring(part.IndexOf("]", StringComparison.Ordinal) + 1))
+			);
+		}
+
+		if (rMatchImplicitMultiplyWithVariable.IsMatch(part))
+		{
+			return new MathNode(
+				NodeType.Multiply,
+				PartialStringToCalculator(parts, part.Substring(0, part.IndexOf("[", StringComparison.Ordinal))),
+				PartialStringToCalculator(parts, part.Substring(part.IndexOf("[", StringComparison.Ordinal)))
+			);
+		}
+
+		if (rMatchImplicitMultiplyWithSymbol.IsMatch(part))
+		{
+			return new MathNode(
+				NodeType.Multiply,
+				PartialStringToCalculator(parts, Regex.Match(part, @"^-?\d+").Value),
+				PartialStringToCalculator(parts, Regex.Match(part, @"[a-zA-Z]+$").Value)
+			);
+		}
+
 		if (rMatchDivide.IsMatch(part))
 		{
-			return new Calculator(
-				"operator",
-				'/',
-				"divide",
-				args: new List<Calculator>()
-				{
-					PartialStringToCalculator(parts,part.Substring(0,part.IndexOf('/'))),
-					PartialStringToCalculator(parts,part.Substring(part.IndexOf('/')+1))
-				}
+			return new MathNode(
+				NodeType.Divide,
+				PartialStringToCalculator(parts, part.Substring(0, part.IndexOf('/'))),
+				PartialStringToCalculator(parts, part.Substring(part.IndexOf('/') + 1))
 			);
 		}
+
 		if (rMatchPow.IsMatch(part))
 		{
-			return new Calculator(
-				"operator",
-				'^',
-				"pow",
-				args: new List<Calculator>()
-				{
-					PartialStringToCalculator(parts,part.Substring(0,part.IndexOf('^'))),
-					PartialStringToCalculator(parts,part.Substring(part.IndexOf('^')+1))
-				}
+			return new MathNode(
+				NodeType.Power,
+				PartialStringToCalculator(parts, part.Substring(0, part.IndexOf('^'))),
+				PartialStringToCalculator(parts, part.Substring(part.IndexOf('^') + 1))
 			);
 		}
+
 		throw new ArgumentException("Invalid Calculator string supplied", part);
 	}
-	/*
-	 [7(x+(7*4))-2(8x-6)]
-	 [7(x+][7*4][)-2][8x-6]
-	 [7][x+][7*4][-2][8][x][-6]
-	 [7][x][+][7*4][-][2][8][x][-6]
-	 */
-	
+	#endregion
 }
-
-public class Calculator
-{
-	public string Mathc { get; set; }
-	public char Op { get; set; }
-	public string Fn { get; set; }
-	public int Value{ get; set; }
-	public string Name{ get; set; }
-	public List<Calculator> Args { get; set; }
-
-	public Calculator(string mathc, char op = '\0', string fn="", int value=0, string name="" , List<Calculator> args = null)
-	{
-		Mathc = mathc;
-		Op = op;
-		Fn = fn;
-		Value = value;
-		Name = name;
-		Args = args;
-	}
-
-	public override string ToString()
-	{
-		switch (this.Mathc)
-		{
-			case "value":
-				return this.Value.ToString();
-			case "symbol":
-				return this.Name.ToString();
-			default:
-				switch (this.Fn)
-				{
-					case "unaryMinus":
-						return "-" + this.Args[0].ToString();
-					default:
-						return this.Args[0].ToString() + this.Op + this.Args[1].ToString();
-				}
-		}
-	}
-}
-
-/*equation += string.Format("{0}{1}*x^({2}{3}{4}{5}){6} ",
-					numbers[0] >= 0 && x!=0 ? "+ " : "",
-					numbers[0],
-					PlusMinus(true),
-					numbers[1],
-					numbers[2] == 0 ? "" : "/",
-					numbers[2] == 0 ? (object) "" : numbers[2],
-					wildcard
-					);*/
-					
-/*equation = {
-	"mathc":"operator"
-	"op":'*'
-		"fn":"multiply"
-			"args":[
-			{
-				"mathc":"value"
-				"value":number[0]
-			},
-			{
-				"mathc":"operator"
-				"op":'^'
-				"fn":"pow"
-				"args":[{
-					"mathc":"symbol"
-					"value":"x"
-				},
-				{
-					if (numbers[2] == 0)
-					{
-						"mathc":"value"
-						"value":number[1]
-					}
-					else
-					{
-						{
-							"mathc":"operator"
-							"op":'/'
-							"fn":"divide"
-							"args":[
-							{
-								"mathc":"value"
-								"value":number[1]
-							},
-							{
-								"mathc":"value"
-								"value":number[2]
-							}]
-						}
-					}
-				}]
-			}]
-}*/
