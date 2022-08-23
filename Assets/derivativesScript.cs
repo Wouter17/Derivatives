@@ -178,13 +178,19 @@ public class DerivativesScript : MonoBehaviour
 	private void SetEquationText(string text)
 	{
 		equationText.text = text;
-		equationText.characterSize = (0.17f - equationText.text.Length * 0.00186f) * 0.25f;
+		equationText.characterSize = (0.17f - text.Length * 0.00186f) * 0.25f;
 	}
 
 	private void SetScreenText(string text)
 	{
 		screen.text = text;
-		screen.characterSize = 0.0575f * (float)Math.Pow(0.98, screen.text.Length);
+		if (text.Length < 22)
+		{
+			screen.characterSize = 0.04f;
+			return;
+		}
+
+		screen.characterSize = (float)(0.9398f * Math.Pow(text.Length, -1.027f));
 	}
 
 	private void GenerateSolutions()
@@ -573,8 +579,11 @@ public class DerivativesScript : MonoBehaviour
 	#pragma warning disable 414
 	private readonly string TwitchHelpMessage = @"!{0} type <answer> [Inputs the specified answer] | !{0} delete (#) [Deletes the last inputted character (optionally '#' times)] | !{0} submit/enter [Enters the current input]";
 	#pragma warning restore 414
-
-	private IEnumerator ProcessTwitchCommand(string command) //Handles commands sent in via Twitch
+		
+	/// <summary>
+	/// Handles commands sent in via Twitch
+	/// </summary>
+	private IEnumerator ProcessTwitchCommand(string command) 
 	{
 		if (Regex.IsMatch(command, @"^\s*(submit|enter)\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
         {
@@ -633,7 +642,7 @@ public class DerivativesScript : MonoBehaviour
 			}
 			else
 			{
-				int temp = -1;
+				int temp;
 				if (!int.TryParse(parameters[1], out temp))
                 {
 					yield return "sendtochaterror!f The specified number of times to delete '" + parameters[1] + "' is invalid!";
@@ -663,7 +672,10 @@ public class DerivativesScript : MonoBehaviour
 		}
 	}
 
-	IEnumerator TwitchHandleForcedSolve() //Handles autosolving the module
+	/// <summary>
+	/// Handles autosolving the module
+	/// </summary>
+	IEnumerator TwitchHandleForcedSolve()
 	{
 		int start = _currentEquation;
 		for (int i = start; i < _solvesNeeded; i++)

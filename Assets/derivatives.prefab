@@ -1692,7 +1692,7 @@ Transform:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1040368837637678}
   m_LocalRotation: {x: 0.7071068, y: -0, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: -0.0812, y: 0.011, z: 0.0401}
+  m_LocalPosition: {x: -0.0807, y: 0.011, z: 0.0339}
   m_LocalScale: {x: 0.1, y: 0.1, z: 1.0000005}
   m_Children: []
   m_Father: {fileID: 4530356395800398}
@@ -4484,8 +4484,8 @@ TextMesh:
   m_OffsetZ: 0
   m_CharacterSize: 0.04
   m_LineSpacing: 1
-  m_Anchor: 0
-  m_Alignment: 0
+  m_Anchor: 3
+  m_Alignment: 1
   m_TabSize: 4
   m_FontSize: 29
   m_FontStyle: 0
@@ -4668,6 +4668,8 @@ MonoBehaviour:
   defaultColor: {r: 0.3882353, g: 0.3882353, b: 0.3882353, a: 1}
   maxEquations: 10
   wildcardChance: 100
+  checkingLimit: 1000
+  precision: 0.0001
 --- !u!114 &114076418882490656
 MonoBehaviour:
   m_ObjectHideFlags: 1
