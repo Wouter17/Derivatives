@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using Object = UnityEngine.Object;
+using IEnumerator = System.Collections.IEnumerator;
 
 public class DerivativesScript : MonoBehaviour
 {
@@ -65,7 +66,7 @@ public class DerivativesScript : MonoBehaviour
 	{
 		var time = bomb.GetTime();
 		_solvesNeeded = Math.Min((int)Math.Ceiling(time / 180), maxEquations);
-		
+
 		LOG(string.Format("generating {0} equations", _solvesNeeded));
 		GenerateEquations(_solvesNeeded);
 		GenerateSolutions();
@@ -199,9 +200,9 @@ public class DerivativesScript : MonoBehaviour
 	{
 		var correct = true;
 
-		var textOnsScreen = screen.text.Substring(8);
+		var textOnScreen = screen.text.Substring(8);
 		
-		if (textOnsScreen.Split('(').Length != textOnsScreen.Split(')').Length)
+		if (textOnScreen.Count(c => c == '(') != textOnScreen.Count(c => c == ')'))
 		{
 			InvalidInput();
 			return;
@@ -210,12 +211,12 @@ public class DerivativesScript : MonoBehaviour
 		MathNode answerGiven;
 		try
 		{
-			answerGiven = StringToCalculator(textOnsScreen);
+			answerGiven = StringToCalculator(textOnScreen);
 		}
 		catch (Exception e)
 		{
 			InvalidInput();
-			Console.WriteLine(e);
+			LOG(e.ToString());
 			return;
 		}
 		
@@ -232,7 +233,7 @@ public class DerivativesScript : MonoBehaviour
 						MathNode.SolveForValue(correctDerivative, i),
 						MathNode.SolveForValue(answerGiven, i),
 						i,
-						textOnsScreen,
+						textOnScreen,
 						_equations[_currentEquation])
 					);
 				HandleStrike();
@@ -431,8 +432,7 @@ public class DerivativesScript : MonoBehaviour
 
 	private MathNode PartialStringToCalculator(List<string> parts, string part)
 	{
-		var rValue =
-			new Regex(@"^-?\d+$"); //TODO: needs to be replaced with one that also support more than 2 characters
+		var rValue = new Regex(@"^-?\d+$");
 		var rSymbol = new Regex(@"^[a-zA-Z]+$");
 		var rVariable = new Regex(@"^\[\d+\]$");
 		var rMatchBrackets = new Regex(@"^\(.*\)$");
@@ -565,6 +565,148 @@ public class DerivativesScript : MonoBehaviour
 		}
 
 		throw new ArgumentException("Invalid Calculator string supplied", part);
+	}
+	#endregion
+
+	#region Twitch Plays
+	
+	#pragma warning disable 414
+	private readonly string TwitchHelpMessage = @"!{0} type <answer> [Inputs the specified answer] | !{0} delete (#) [Deletes the last inputted character (optionally '#' times)] | !{0} submit/enter [Enters the current input]";
+	#pragma warning restore 414
+
+	private IEnumerator ProcessTwitchCommand(string command) //Handles commands sent in via Twitch
+	{
+		if (Regex.IsMatch(command, @"^\s*(submit|enter)\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        {
+			yield return null;
+			keypad[19].OnInteract();
+        }
+		string[] parameters = command.Split(' ');
+		if (Regex.IsMatch(parameters[0], @"^\s*type\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			if (parameters.Length == 1)
+				yield return "sendtochaterror Please specify an answer to input!";
+			else
+            {
+				parameters[1] = command.Substring(5);
+				char[] validChars = { '7', '4', '1', '0', '8', '5', '2', '(', '9', '6', '3', ')', '/', '*', '-', '+', ' ', '^', 'x' };
+				bool onlySpaces = true;
+				for (int i = 0; i < parameters[1].Length; i++)
+                {
+					if (!validChars.Contains(parameters[1].ToLowerInvariant()[i]))
+					{
+						yield return "sendtochaterror!f The specified character '" + parameters[1][i] + "' is not typable!";
+						yield break;
+					}
+					else if (!parameters[1][i].Equals(' ') && onlySpaces)
+						onlySpaces = false;
+                }
+				if (onlySpaces)
+				{
+					yield return "sendtochaterror Please specify an answer to input!";
+					yield break;
+				}
+				for (int i = 0; i < parameters[1].Length; i++)
+				{
+					if (!parameters[1][i].Equals(' '))
+					{
+						keypad[Array.IndexOf(validChars, parameters[1].ToLowerInvariant()[i])].OnInteract();
+						yield return new WaitForSeconds(0.1f);
+					}
+				}
+			}
+		}
+		if (Regex.IsMatch(parameters[0], @"^\s*delete\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			if (parameters.Length > 2)
+				yield return "sendtochaterror Too many parameters!";
+			else if (parameters.Length == 1)
+            {
+				if (screen.text.Length <= 8)
+                {
+					yield return "sendtochaterror There are no characters that can be deleted!";
+					yield break;
+				}
+				keypad[16].OnInteract();
+			}
+			else
+			{
+				int temp = -1;
+				if (!int.TryParse(parameters[1], out temp))
+                {
+					yield return "sendtochaterror!f The specified number of times to delete '" + parameters[1] + "' is invalid!";
+					yield break;
+				}
+				if (temp < 1)
+				{
+					yield return "sendtochaterror The specified number of times to delete '" + parameters[1] + "' is less than 1!";
+					yield break;
+				}
+				if (screen.text.Length <= 8)
+				{
+					yield return "sendtochaterror There are no characters that can be deleted!";
+					yield break;
+				}
+				if ((screen.text.Length - temp) < 8)
+				{
+					yield return "sendtochaterror There is not enough characters to delete that '" + temp + "' times!";
+					yield break;
+				}
+				for (int i = 0; i < temp; i++)
+                {
+					keypad[16].OnInteract();
+					yield return new WaitForSeconds(0.1f);
+				}
+			}
+		}
+	}
+
+	IEnumerator TwitchHandleForcedSolve() //Handles autosolving the module
+	{
+		int start = _currentEquation;
+		for (int i = start; i < _solvesNeeded; i++)
+		{
+			string noSpaceSolution = _solutions[i].ToString();
+			string screenText = screen.text.Substring(8);
+			if (screenText != noSpaceSolution)
+			{
+				int clearNum = -1;
+				for (int j = 0; j < screenText.Length; j++)
+				{
+					if (j == noSpaceSolution.Length)
+						break;
+					if (screenText[j] != noSpaceSolution[j])
+					{
+						clearNum = j;
+						int target = screenText.Length - j;
+						for (int k = 0; k < target; k++)
+						{
+							keypad[16].OnInteract();
+							yield return new WaitForSeconds(0.1f);
+						}
+						break;
+					}
+				}
+				if (clearNum == -1)
+                {
+					if (screenText.Length > noSpaceSolution.Length)
+					{
+						while (screen.text.Substring(8).Length > _solutions[i].ToString().Length)
+						{
+							keypad[16].OnInteract();
+							yield return new WaitForSeconds(0.1f);
+						}
+					}
+					else
+						yield return ProcessTwitchCommand("type " + noSpaceSolution.Substring(screenText.Length));
+				}
+				else
+					yield return ProcessTwitchCommand("type " + noSpaceSolution.Substring(clearNum));
+			}
+			keypad[19].OnInteract();
+		}
 	}
 	#endregion
 }
