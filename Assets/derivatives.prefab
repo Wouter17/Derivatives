@@ -4667,7 +4667,7 @@ MonoBehaviour:
   screen: {fileID: 102798581478862456}
   defaultColor: {r: 0.3882353, g: 0.3882353, b: 0.3882353, a: 1}
   maxEquations: 10
-  wildcardChance: 100
+  wildcardChance: 10
   checkingLimit: 1000
   precision: 0.0001
 --- !u!114 &114076418882490656
