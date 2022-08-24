@@ -16,7 +16,7 @@ MonoBehaviour:
   author: Wouter17
   description: "v2.0\nDo you remember high school math? Time to find out.\n\nModuleID:
     derivatives\n\nCreated by: Wouter17\n\nGitHub and suggestions/bugs:\r\nhttps://github.com/Wouter17/Derivatives\n\nManual
-    available here:\nhttps://wouter17.github.io/Derivatives/Manual.html"
+    available here:\nhttps://ktane.timwi.de/HTML/Derivatives.html\nhttps://wouter17.github.io/Derivatives/Manual.html"
   version: 2.0
   outputFolder: build
   previewImage: {fileID: 2800000, guid: b34cde89223621244a232e0dfd864873, type: 3}
