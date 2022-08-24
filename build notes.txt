@@ -4,10 +4,13 @@ Do you remember high school math? Time to find out.
 ModuleID: derivatives
 
 Created by: Wouter17
+Additional programming work and Twitch Plays by: eXish
 
 GitHub and suggestions/bugs:
 https://github.com/Wouter17/Derivatives
 
 Manual available here:
-https://ktane.timwi.de/HTML/Derivatives.html
+HTML: https://ktane.timwi.de/HTML/Derivatives.html
+PDF: https://ktane.timwi.de/PDF/Derivatives.pdf
+
 https://wouter17.github.io/Derivatives/Manual.html
