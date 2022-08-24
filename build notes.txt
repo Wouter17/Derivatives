@@ -1,9 +1,13 @@
-v1.0
-You remember highschool math? Time to find out.
+v2.0
+Do you remember high school math? Time to find out.
 
 ModuleID: derivatives
 
 Created by: Wouter17
 
+GitHub and suggestions/bugs:
+https://github.com/Wouter17/Derivatives
+
 Manual available here:
-https://
+https://ktane.timwi.de/HTML/Derivatives.html
+https://wouter17.github.io/Derivatives/Manual.html
