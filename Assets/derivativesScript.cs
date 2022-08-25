@@ -233,8 +233,8 @@ public class DerivativesScript : MonoBehaviour
 				    MathNode.SolveForValue(answerGiven, i), MathNode.SolveForValue(correctDerivative, i), precision))
 			{
 				correct = false;
-				LOG(string.Format("equation {0} answer incorrect \nexpected: {1}\nbut got: {2}\nfor x = {3}\nfrom input: {4}\nfor equation: {5}",
-						_currentEquation,
+				LOG(string.Format("equation {0} answer incorrect\nexpected: {1}\nbut got: {2}\nfor x = {3}\nfrom input: {4}\nfor equation: {5}",
+						_currentEquation + 1,
 						MathNode.SolveForValue(correctDerivative, i),
 						MathNode.SolveForValue(answerGiven, i),
 						i,
@@ -249,7 +249,7 @@ public class DerivativesScript : MonoBehaviour
 
 		if (correct)
 		{
-			LOG(string.Format("equation {0} solved correctly", _currentEquation));
+			LOG(string.Format("equation {0} solved correctly", _currentEquation + 1));
 
 			if (_currentEquation + 1 == _solvesNeeded)
 			{
@@ -336,7 +336,8 @@ public class DerivativesScript : MonoBehaviour
 
 	private void LOG(string message)
 	{
-		Debug.Log(string.Format("[Derivatives #{0}] " + message, _moduleId));
+		var formattedMessage = message.Replace("\n", string.Format("\n[Derivatives #{0}] ", _moduleId));
+		Debug.Log(string.Format("[Derivatives #{0}] " + formattedMessage, _moduleId));
 	}
 
 	#region Twitch Plays
