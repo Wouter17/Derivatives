@@ -14,7 +14,7 @@ public static class MathNodeConverter
 		var rMatchBrackets = new Regex(@"\([^()]*\)");
 		var rMatchUnaryMinus = new Regex(@"(?<=(\+|-|\/|\*|\^|^))-([a-zA-Z]+|\d+|\[\d+\])(?!\^)");
 		var rMatchPow = new Regex(@"([a-zA-Z]+|\d+|\[\d+\])\^([a-zA-Z]+|\d+|\[\d+\])");
-		var rMatchImplicitMultiply = new Regex(@"\d+[a-zA-Z]");
+		var rMatchImplicitMultiply = new Regex(@"(\d+|\[\d+\])[a-zA-Z]");
 		var rMatchMultiplyDivide =
 			new Regex(
 				@"(([a-zA-Z]+|\d+|\[\d+\])(\*|\/)([a-zA-Z]+|\d+|\[\d+\]))|(\[\d+\]|\d+|[a-zA-Z]+)\[\d+\]"); //does accept 7(2*5) but doesn't (2*5)7
@@ -109,7 +109,7 @@ public static class MathNodeConverter
 		var rMatchMultiply = new Regex(@"^-?([a-zA-Z]+|\d+|\[\d+\])\*-?([a-zA-Z]+|\d+|\[\d+\])$");
 		var rMatchImplicitMultiplyWithMultipleVariable = new Regex(@"^\[\d+\]\[\d+\]$");
 		var rMatchImplicitMultiplyWithVariable = new Regex(@"^-?([a-zA-Z]|\d+)\*?\[\d+\]$");
-		var rMatchImplicitMultiplyWithSymbol = new Regex(@"^-?(\d+)\*?[a-zA-Z]+$");
+		var rMatchImplicitMultiplyWithSymbol = new Regex(@"^-?(\d+|\[\d+\])\*?[a-zA-Z]+$");
 		var rMatchDivide = new Regex(@"^-?([a-zA-Z]+|\d+|\[\d+\])\/-?([a-zA-Z]+|\d+|\[\d+\])$");
 		var rMatchPow = new Regex(@"^([a-zA-Z]+|\d+|\[\d+\])\^([a-zA-Z]+|\d+|\[\d+\])$");
 
@@ -207,7 +207,7 @@ public static class MathNodeConverter
 		{
 			return new MathNode(
 				NodeType.Multiply,
-				PartialStringToCalculator(parts, Regex.Match(part, @"^-?\d+").Value),
+				PartialStringToCalculator(parts, Regex.Match(part, @"^-?(\d+|\[\d+\])").Value),
 				PartialStringToCalculator(parts, Regex.Match(part, @"[a-zA-Z]+$").Value)
 			);
 		}
