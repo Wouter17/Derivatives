@@ -12,7 +12,7 @@ public static class MathNodeConverter
 		//var endTester = new Regex(@"^\[\d+\]$");
 		var rMatchLn = new Regex(@"ln\([^()]*\)");
 		var rMatchBrackets = new Regex(@"\([^()]*\)");
-		var rMatchUnaryMinus = new Regex(@"(?<=(\/|\*|\^|^))-([a-zA-Z]+|\d+|\[\d+\])(?!\^)");
+		var rMatchUnaryMinus = new Regex(@"(?<=(\+|-|\/|\*|\^|^))-([a-zA-Z]+|\d+|\[\d+\])(?!\^)");
 		var rMatchPow = new Regex(@"([a-zA-Z]+|\d+|\[\d+\])\^([a-zA-Z]+|\d+|\[\d+\])");
 		var rMatchImplicitMultiply = new Regex(@"\d+[a-zA-Z]");
 		var rMatchMultiplyDivide =
