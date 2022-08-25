@@ -14,11 +14,11 @@ public static class MathNodeConverter
 		var rMatchBrackets = new Regex(@"\([^()]*\)");
 		var rMatchUnaryMinus = new Regex(@"(?<=(\/|\*|\^|^))-([a-zA-Z]+|\d+|\[\d+\])(?!\^)");
 		var rMatchPow = new Regex(@"([a-zA-Z]+|\d+|\[\d+\])\^([a-zA-Z]+|\d+|\[\d+\])");
+		var rMatchImplicitMultiply = new Regex(@"\d+[a-zA-Z]");
 		var rMatchMultiplyDivide =
 			new Regex(
 				@"(([a-zA-Z]+|\d+|\[\d+\])(\*|\/)([a-zA-Z]+|\d+|\[\d+\]))|(\[\d+\]|\d+|[a-zA-Z]+)\[\d+\]"); //does accept 7(2*5) but doesn't (2*5)7
 		var rMatchAddMinus = new Regex(@"([a-zA-Z]+|\d+|\[\d+\])(\+|-)([a-zA-Z]+|\d+|\[\d+\])");
-		var rMatchImplicitMultiply = new Regex(@"^-?([a-zA-Z]|\d+)\*?\[\d+\]$");
 		var parts = new List<string> { toConvert };
 		if (inputParts != null) parts = inputParts;
 
@@ -63,7 +63,6 @@ public static class MathNodeConverter
 				}, 1);
 				continue;
 			}
-
 			if (rMatchMultiplyDivide.IsMatch(toConvert))
 			{
 				toConvert = rMatchMultiplyDivide.Replace(toConvert, match =>
@@ -73,17 +72,6 @@ public static class MathNodeConverter
 				}, 1);
 				continue;
 			}
-
-			if (rMatchAddMinus.IsMatch(toConvert))
-			{
-				toConvert = rMatchAddMinus.Replace(toConvert, match =>
-				{
-					parts.Add(match.ToString());
-					return string.Format("[{0}]", parts.Count - 1);
-				}, 1);
-				continue;
-			}
-
 			if (rMatchImplicitMultiply.IsMatch(toConvert))
 			{
 				toConvert = rMatchImplicitMultiply.Replace(toConvert, match =>
@@ -93,7 +81,15 @@ public static class MathNodeConverter
 				}, 1);
 				continue;
 			}
-
+			if (rMatchAddMinus.IsMatch(toConvert))
+			{
+				toConvert = rMatchAddMinus.Replace(toConvert, match =>
+				{
+					parts.Add(match.ToString());
+					return string.Format("[{0}]", parts.Count - 1);
+				}, 1);
+				continue;
+			}
 			break;
 		}
 
