@@ -14,10 +14,11 @@ MonoBehaviour:
   id: derivatives
   title: Derivatives
   author: Wouter17
-  description: "v2.0\nDo you remember high school math? Time to find out.\n\nModuleID:
-    derivatives\n\nCreated by: Wouter17\nAdditional programming work and Twitch Plays
-    by: eXish\r\n\nGitHub and suggestions/bugs:\r\nhttps://github.com/Wouter17/Derivatives\n\nManual
-    available here:\nhttps://ktane.timwi.de/HTML/Derivatives.html\nhttps://wouter17.github.io/Derivatives/Manual.html"
+  description: "v2.1\r\nDo you remember high school math? Time to find out.\r\n\r\nModuleID:
+    derivatives\r\n\r\nCreated by: Wouter17\r\nAdditional programming work and Twitch
+    Plays by: eXish\r\n\r\nGitHub and suggestions/bugs:\r\nhttps://github.com/Wouter17/Derivatives\r\n\r\nManual
+    available here:\r\nHTML: https://ktane.timwi.de/HTML/Derivatives.html\r\nPDF:
+    https://ktane.timwi.de/PDF/Derivatives.pdf\r\n\r\nhttps://wouter17.github.io/Derivatives/Manual.html"
   version: 2.0
   outputFolder: build
   previewImage: {fileID: 2800000, guid: b34cde89223621244a232e0dfd864873, type: 3}
