@@ -13,4 +13,4 @@ Manual available here:
 HTML: https://ktane.timwi.de/HTML/Derivatives.html
 PDF: https://ktane.timwi.de/PDF/Derivatives.pdf
 
-https://wouter17.github.io/Derivatives/Manual.html
+https://wouter17.github.io/Derivatives/Manual/Derivatives.html
